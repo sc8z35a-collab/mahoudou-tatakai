@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"><meta name="theme-color" content="#101514">
+<title>ASHEN CROWN — 灰冠の剣士</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"}}</script>
+</head>
+<body>
+<main id="game-shell">
+<canvas id="world" aria-label="城内でNPC剣士と戦う3Dゲーム"></canvas>
+<div class="vignette" aria-hidden="true"></div><div id="damage-flash" aria-hidden="true"></div>
+<header class="topbar">
+<a class="brand" href="./" aria-label="Ashen Crown ホーム"><span class="crest">♜</span><span>ASHEN CROWN<small>灰 冠 の 剣 士</small></span></a>
+<div class="location"><span class="tiny-diamond">◆</span> 王城エルドリア <span class="slash">/</span> 玉座の間</div>
+<div class="header-actions"><span class="quality"><i></i> ULTRA <span>3D</span></span><button id="sound-button" class="icon-button" aria-label="サウンド切り替え" title="サウンド切り替え">♪<span class="off-mark">／</span></button><button id="settings-button" class="icon-button" aria-label="設定" title="設定">⚙</button><button id="fullscreen-button" class="icon-button" aria-label="全画面" title="全画面">⛶</button></div>
+</header>
+<section id="landing" aria-labelledby="game-title">
+<div class="eyebrow"><span></span> A DUEL FOR THE CROWN</div>
+<p class="chapter">CHAPTER I <span>—</span> THE FALLEN HALL</p>
+<h1 id="game-title">ASHEN<br><span>CROWN</span></h1>
+<div class="title-sub"><span></span> 灰冠の剣士 <span></span></div>
+<p class="intro">王冠を失った城に、剣戟が響く。<br>その一振りで、運命を切り拓け。</p>
+<button id="start-button" class="primary-button"><span class="button-sword">⚔</span><span>決闘をはじめる<small>ENTER THE ARENA</small></span><span class="button-arrow">→</span></button>
+<button id="help-button" class="text-button">操作方法 <span>↗</span></button>
+<div class="game-tags"><span>01 <small>プレイヤー</small></span><b>×</b><span>01 <small>NPC 剣士</small></span><i></i><span class="tag-detail">3D SWORD COMBAT</span></div>
+</section>
+<aside id="opponent-preview"><div class="preview-line"></div><p>YOUR OPPONENT</p><h2>王城の守護者</h2><span>THE CROWN WARDEN</span><div class="difficulty"><i></i><i></i><i></i><i></i><i class="empty"></i><small>精鋭の剣士</small></div></aside>
+<footer id="landing-footer"><span><i class="live-dot"></i> REAL-TIME 3D EXPERIENCE</span><span class="landscape-note">▱ 横画面・ヘッドホン推奨</span><span class="footer-version">ELDORIA CASTLE <b>•</b> v1.0</span></footer>
+<section id="battle-hud" hidden aria-label="戦闘情報"><div class="player-stats"><div class="stat-heading"><span>流浪の剣士</span><small id="player-health-text">100 / 100</small></div><div class="health-track"><i id="player-health"></i></div><div class="stamina-track"><i id="player-stamina"></i></div><small class="stamina-label">STAMINA</small></div><div class="round-info"><small>王城エルドリア</small><span id="round-label">DUEL I</span><b id="timer">00:00</b></div><div class="enemy-stats"><div class="stat-heading"><span>王城の守護者</span><small id="enemy-health-text">150 / 150</small></div><div class="health-track enemy"><i id="enemy-health"></i></div><small class="enemy-sub">THE CROWN WARDEN</small></div></section>
+<div id="combat-message" role="status" aria-live="polite"></div><div id="crosshair" hidden>◇</div>
+<section id="touch-controls" hidden aria-label="ゲーム操作"><div class="movement-area"><div id="joystick" aria-label="移動スティック"><div class="joystick-cross"></div><div id="joystick-knob"></div></div><span>MOVE</span></div><div class="action-area"><button id="dodge-button" class="action small-action" aria-label="回避"><b>⤨</b><span>回避</span></button><button id="guard-button" class="action small-action" aria-label="長押しで防御"><b>◇</b><span>防御</span></button><button id="attack-button" class="action attack-action" aria-label="攻撃"><b>⚔</b><span>攻撃</span></button></div><div class="battle-bottom"><button id="pause-button" aria-label="一時停止">Ⅱ <span>PAUSE</span></button><span>敵を自動ロックオン <i>◆</i> 間合いを見極めろ</span></div></section>
+<div id="loading"><span class="loading-emblem">♜</span><p>城門を開いています…</p><div class="loading-track"><i></i></div></div>
+<dialog id="help-dialog"><button class="close-dialog" aria-label="閉じる">×</button><p class="modal-eyebrow">THE ART OF THE BLADE</p><h2>剣士の心得</h2><p class="modal-desc">敵を自動で捉える、三人称視点の剣術バトル。</p><div class="help-grid"><article><b>✥</b><h3>移動</h3><p>左スティックで移動。<br>PC：W A S D / 矢印</p></article><article><b>⚔</b><h3>攻撃</h3><p>近づいて剣を振る。<br>PC：J / クリック</p></article><article><b>◇</b><h3>防御</h3><p>長押しで正面を防御。<br>PC：K を長押し</p></article><article><b>⤨</b><h3>回避</h3><p>移動方向へ素早く回避。<br>PC：Space</p></article></div><p class="help-tip">敵の剣が赤く光ったら攻撃の合図。回避の直後が反撃のチャンスです。攻撃・防御・回避はスタミナを消費します。</p><button class="primary-button close-help">心得た <span>→</span></button></dialog>
+<dialog id="settings-dialog"><button class="close-dialog" aria-label="閉じる">×</button><p class="modal-eyebrow">YOUR EXPERIENCE</p><h2>設定</h2><label class="setting-row">画質<select id="quality-select"><option value="ultra">ULTRA — 最大3×解像度</option><option value="high">HIGH — 最大2×解像度</option><option value="standard">STANDARD — 等倍</option></select></label><label class="setting-row">サウンド<input id="sound-toggle" type="checkbox"></label><label class="setting-row">NPC の強さ<select id="difficulty-select"><option value="normal">精鋭</option><option value="easy">見習い</option><option value="hard">剣聖</option></select></label><p class="help-tip">ULTRA は高解像度レンダリング・ブルーム・リアルタイムシャドウを使用。横画面・全画面でのプレイがおすすめです。</p></dialog>
+<dialog id="pause-dialog"><p class="modal-eyebrow">A MOMENT OF STILLNESS</p><h2>一時停止</h2><button id="resume-button" class="primary-button">戦いに戻る <span>→</span></button><button id="quit-button" class="text-button">タイトルに戻る</button></dialog>
+<dialog id="result-dialog"><p id="result-eyebrow" class="modal-eyebrow">VICTORY</p><h2 id="result-title">王冠は、あなたの手に。</h2><p id="result-description" class="modal-desc"></p><div class="result-stats"><span>決闘時間<b id="result-time"></b></span><span>命中回数<b id="result-hits"></b></span><span>残り体力<b id="result-health"></b></span></div><button id="retry-button" class="primary-button">もう一度、剣を交える <span>→</span></button><button id="result-home" class="text-button">タイトルに戻る</button></dialog>
+<div id="rotate-hint"><span>↻</span><p>横画面で、剣の世界へ。<small>スマートフォンを横向きにしてください</small></p><button aria-label="案内を閉じる">×</button></div>
+</main>
+<script type="module" src="js/boot.js"></script>
+</body></html>
