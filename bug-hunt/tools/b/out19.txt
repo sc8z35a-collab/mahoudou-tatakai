@@ -1,0 +1,2 @@
+ELDORIA: 2528 architectural/prop pieces, 109 clusters, 130 collision volumes.
+{"deadWithProgressTip":["1.13","2.01","-1.13"],"capeVertsInsideTorso":"0/925","capeInsideWhenWalkingBackward":0,"capeMinY":"0.67"}

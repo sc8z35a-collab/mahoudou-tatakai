@@ -1,0 +1,22 @@
+ELDORIA: 2528 architectural/prop pieces, 109 clusters, 130 collision volumes.
+ASHEN CROWN: 3D scene ready; touch controls and NPC combat initialized.
+load ms 1482
+PASS 1: Start button opens the playable battle HUD
+PASS 2: Starting health is correct
+PASS 3: Keyboard forward moves toward the locked target
+PASS 4: Joystick horizontal input strafes right
+PASS 5: NPC approaches the player
+PASS 10: Guard blocks damage and consumes stamina
+PASS 20: NPC guard persists through the hit window
+PASS 30: Player blade points forward at yaw 1.57
+PASS 40: NPC fingers and weapon share the grip origin
+PASS 50: A shield does not block an attack from behind
+PASS 60: Exactly coincident fighters separate rather than becoming stuck
+PASS 70: Combat buttons are disabled immediately after a result
+PASS 80: NPC soles stay above the floor through both attack clips
+PASS 90: Side aisle beyond old boundary accessible
+PASS 100: Brazier blocks high-speed motion
+PASS 110: Body slides around rotated furniture
+FIELD TESTS: expanded hall, stairs, furniture, sweeping, navigation and camera passed.
+SMOKE TEST COMPLETE: 113/113 passed
+B3 {"after":{"mode":"battle","paused":true,"elapsed":21,"hits":2,"difficulty":"normal","soundEnabled":false,"renderDirty":true,"resultTimer":null,"roundId":41,"messageTimer":2.3,"shake":0},"escPaused":true,"afterVisibility":{"paused":true,"pauseOpen":true}}

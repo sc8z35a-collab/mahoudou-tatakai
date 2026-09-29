@@ -1,0 +1,6 @@
+throneBack depth 1.8 x -18.0 y -10.4 in
+westWallPanel depth 1.3 x -3.3 y -14.1 in
+northWindow depth -1.6 x -19.0 y -8.0 OUTSIDE(no shadow)
+ceilingNW depth -10.2 x -10.5 y -6.9 OUTSIDE(no shadow)
+pillarNW depth -2.6 x -9.4 y -12.9 OUTSIDE(no shadow)
+sun inside hall? true

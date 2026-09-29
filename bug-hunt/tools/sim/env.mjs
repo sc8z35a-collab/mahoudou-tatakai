@@ -1,0 +1,21 @@
+import {JSDOM} from 'jsdom';import fs from 'node:fs';
+const html=fs.readFileSync(new URL('../../../index.html',import.meta.url),'utf8');
+const dom=new JSDOM(html,{url:'http://localhost/index.html'+(process.env.QS||''),pretendToBeVisual:true});
+const w=dom.window;
+const ctx2d=new Proxy({},{get:(t,k)=>{if(k==='getImageData')return (x,y,ww,hh)=>({data:new Uint8ClampedArray(4)});if(k==='canvas')return {};return typeof t[k]!=='undefined'?t[k]:(()=>({addColorStop(){}}))},set:(t,k,v)=>{t[k]=v;return true}});
+w.HTMLCanvasElement.prototype.getContext=function(){return ctx2d};
+w.HTMLDialogElement.prototype.showModal=function(){this.open=true};
+w.HTMLDialogElement.prototype.close=function(){if(!this.open)return;this.open=false;this.dispatchEvent(new w.Event('close'))};
+w.Element.prototype.setPointerCapture=function(id){(this._cap??=new Set).add(id)};
+w.Element.prototype.hasPointerCapture=function(id){return !!this._cap?.has(id)};
+w.Element.prototype.releasePointerCapture=function(id){this._cap?.delete(id)};
+w.matchMedia=q=>({matches:false,addEventListener(){}});
+if(!w.PointerEvent){w.PointerEvent=class extends w.MouseEvent{constructor(t,o={}){super(t,o);this.pointerId=o.pointerId??1;this.pointerType=o.pointerType??'touch'}}}
+Object.defineProperty(w.document,'hidden',{get:()=>globalThis.__hidden??false,configurable:true});
+globalThis.window=w;globalThis.document=w.document;globalThis.location=w.location;Object.defineProperty(globalThis,'navigator',{value:w.navigator,configurable:true});
+for(const k of ['HTMLElement','Element','Event','KeyboardEvent','PointerEvent','MouseEvent','matchMedia','innerWidth','innerHeight','devicePixelRatio','getComputedStyle'])globalThis[k]=w[k];
+globalThis.innerWidth=1280;globalThis.innerHeight=800;globalThis.devicePixelRatio=2;
+const rafq=[];globalThis.requestAnimationFrame=f=>{rafq.push(f);return rafq.length};w.requestAnimationFrame=globalThis.requestAnimationFrame;
+globalThis.__raf=rafq;
+globalThis.self=globalThis;
+export {dom,w};

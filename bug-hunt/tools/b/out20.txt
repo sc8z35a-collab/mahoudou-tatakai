@@ -1,0 +1,2 @@
+ELDORIA: 2528 architectural/prop pieces, 109 clusters, 130 collision volumes.
+{"idle":0,"walkForward":0,"walkBackward":4,"cut0":18,"cut1":85,"dodge":0} capeVerts 925
