@@ -3,6 +3,8 @@ import * as THREE from 'three';
 // Static 2.5D character collision: vertical body capsule vs oriented footprints,
 // with the actual dimensions/heights shared with visible architectural pieces.
 // Motion is swept in <= 8 cm slices; boxes retain their rotation, circles their radius.
+// Opposite directions are paired as d and 7-d so symmetric edges can be reused.
+const NAV_DIRS=[[1,0],[1,1],[0,1],[-1,1],[1,-1],[0,-1],[-1,-1],[-1,0]];
 export class CastleField {
   constructor(){
     this.radius=.32;this.height=2.68;this.maxStep=.285;
@@ -11,12 +13,12 @@ export class CastleField {
     this.raycaster=new THREE.Raycaster();this.proxyMaterial=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
   }
   box(name,x,z,w,d,bottom,top,angle=0,walkable=false){
-    const o={name,type:'box',x,z,hx:w/2,hz:d/2,bottom,top,angle,c:Math.cos(angle),s:Math.sin(angle),walkable};
+    const o={name,type:'box',x,z,hx:w/2,hz:d/2,reach:Math.hypot(w,d)/2,bottom,top,angle,c:Math.cos(angle),s:Math.sin(angle),walkable};
     this.solids.push(o);if(walkable)this.surfaces.push(o);
     const m=new THREE.Mesh(new THREE.BoxGeometry(w,top-bottom,d),this.proxyMaterial);m.position.set(x,(bottom+top)/2,z);m.rotation.y=angle;m.updateMatrixWorld(true);this.cameraMeshes.push(m);return o;
   }
   circle(name,x,z,r,bottom,top){
-    const o={name,type:'circle',x,z,r,bottom,top,walkable:false};this.solids.push(o);
+    const o={name,type:'circle',x,z,r,reach:r,bottom,top,walkable:false};this.solids.push(o);
     const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,top-bottom,32),this.proxyMaterial);m.position.set(x,(bottom+top)/2,z);m.updateMatrixWorld(true);this.cameraMeshes.push(m);return o;
   }
   local(o,x,z){const dx=x-o.x,dz=z-o.z;return {x:o.c*dx-o.s*dz,z:o.s*dx+o.c*dz};}
@@ -62,7 +64,7 @@ export class CastleField {
   freeAt(x,z,r=this.radius){
     const b=this.bounds;if(x<b.minX+r||x>b.maxX-r||z<b.minZ+r||z>b.maxZ-r)return false;
     const y=this.ground(x,z),p={x,y,z};
-    for(const o of this.solids){if(o.walkable||o.top<=y+.015||o.bottom>=y+this.height)continue;if(this.penetration(o,p,r))return false;}return true;
+    for(const o of this.solids){if(o.walkable||o.top<=y+.015||o.bottom>=y+this.height)continue;const m=o.reach+r;if(Math.abs(x-o.x)>=m||Math.abs(z-o.z)>=m)continue;if(this.penetration(o,p,r))return false;}return true;
   }
   clearWalk(a,b,r=this.radius){
     const n=Math.max(1,Math.ceil(Math.hypot(b.x-a.x,b.z-a.z)/.16));let previous=this.ground(a.x,a.z);
@@ -84,43 +86,58 @@ export class CastleField {
     return desired.clone();
   }
   buildNavigation(){
-    const step=.45,minX=-11.55,minZ=-30.05,nx=52,nz=104,cells=new Uint8Array(nx*nz),heights=new Float32Array(nx*nz);
+    // The grid covers the full walkable bounds with the same body radius as the player, so
+    // every spot the player can reach is also a node. Edge clearance is precomputed once;
+    // A* then runs on plain arrays without per-edge collision sweeps.
+    const r=this.radius,step=.3,b=this.bounds,minX=b.minX+r,minZ=b.minZ+r;
+    const nx=Math.floor((b.maxX-r-minX)/step)+1,nz=Math.floor((b.maxZ-r-minZ)/step)+1;
+    const cells=new Uint8Array(nx*nz),heights=new Float32Array(nx*nz),edges=new Uint8Array(nx*nz);
     for(let z=0;z<nz;z++)for(let x=0;x<nx;x++){
-      const i=z*nx+x,xx=minX+x*step,zz=minZ+z*step;cells[i]=this.freeAt(xx,zz,this.radius+.025)?1:0;heights[i]=this.ground(xx,zz);
+      const i=z*nx+x,xx=minX+x*step,zz=minZ+z*step;cells[i]=this.freeAt(xx,zz,r)?1:0;heights[i]=this.ground(xx,zz);
     }
-    this.grid={step,minX,minZ,nx,nz,cells,heights};
+    const a={x:0,z:0},c={x:0,z:0};
+    for(let z=0;z<nz;z++)for(let x=0;x<nx;x++){
+      const i=z*nx+x;if(!cells[i])continue;
+      for(let d=0;d<8;d++){
+        const [dx,dz]=NAV_DIRS[d],xx=x+dx,zz=z+dz;if(xx<0||xx>=nx||zz<0||zz>=nz)continue;const j=zz*nx+xx;
+        if(!cells[j]||Math.abs(heights[j]-heights[i])>this.maxStep+.01)continue;
+        if(j<i){if(edges[j]&(1<<(7-d)))edges[i]|=1<<d;continue;}
+        a.x=minX+x*step;a.z=minZ+z*step;c.x=minX+xx*step;c.z=minZ+zz*step;
+        if(this.clearWalk(a,c,r))edges[i]|=1<<d;
+      }
+    }
+    this.grid={step,minX,minZ,nx,nz,cells,heights,edges};
   }
   findPath(from,to){
     if(this.clearWalk(from,to))return [to.clone()];if(!this.grid)this.buildNavigation();
-    const g=this.grid,{nx,nz,cells,heights}=g;
+    const g=this.grid,{nx,nz,cells,heights,edges}=g;
     const coord=i=>new THREE.Vector3(g.minX+(i%nx)*g.step,heights[i],g.minZ+Math.floor(i/nx)*g.step);
     const nearest=p=>{
-      let best=-1,dist=Infinity;const cx=Math.round((p.x-g.minX)/g.step),cz=Math.round((p.z-g.minZ)/g.step);
-      for(let zz=Math.max(0,cz-5);zz<=Math.min(nz-1,cz+5);zz++)for(let xx=Math.max(0,cx-5);xx<=Math.min(nx-1,cx+5);xx++){
-        const i=zz*nx+xx,d=(xx-cx)**2+(zz-cz)**2;if(cells[i]&&d<dist&&this.clearWalk(p,coord(i))){best=i;dist=d;}
-      }return best;
+      const cx=Math.round((p.x-g.minX)/g.step),cz=Math.round((p.z-g.minZ)/g.step),list=[];
+      for(let zz=Math.max(0,cz-4);zz<=Math.min(nz-1,cz+4);zz++)for(let xx=Math.max(0,cx-4);xx<=Math.min(nx-1,cx+4);xx++){const i=zz*nx+xx;if(cells[i])list.push([(xx-cx)**2+(zz-cz)**2,i]);}
+      list.sort((u,v)=>u[0]-v[0]);for(const [,i] of list)if(this.clearWalk(p,coord(i)))return i;return list.length?list[0][1]:-1;
     };
     const start=nearest(from),end=nearest(to);if(start<0||end<0)return [];
     const scores=new Float32Array(cells.length).fill(Infinity),parents=new Int32Array(cells.length).fill(-1),closed=new Uint8Array(cells.length);
     const heap=[];const push=(id,f)=>{let i=heap.length;heap.push({id,f});while(i){const p=(i-1)>>1;if(heap[p].f<=f)break;heap[i]=heap[p];i=p;}heap[i]={id,f};};
     const pop=()=>{const first=heap[0],last=heap.pop();if(heap.length){let i=0;while(i*2+1<heap.length){let c=i*2+1;if(c+1<heap.length&&heap[c+1].f<heap[c].f)c++;if(heap[c].f>=last.f)break;heap[i]=heap[c];i=c;}heap[i]=last;}return first.id;};
     const ex=end%nx,ez=Math.floor(end/nx),heuristic=i=>Math.hypot(i%nx-ex,Math.floor(i/nx)-ez);
-    scores[start]=0;push(start,heuristic(start));let visits=0;
-    while(heap.length&&visits++<12000){
+    const build=target=>{const path=[];for(let i=target;i!==start&&i>=0;i=parents[i])path.push(coord(i));path.reverse();return path;};
+    scores[start]=0;push(start,heuristic(start));let best=start,bestH=heuristic(start);
+    while(heap.length){
       const current=pop();if(closed[current])continue;if(current===end){
-        const path=[];for(let i=end;i!==start&&i>=0;i=parents[i])path.push(coord(i));path.reverse();
-        if(this.clearWalk(path.at(-1)||from,to))path.push(to.clone());return path;
+        const path=build(end);if(this.clearWalk(path.at(-1)||from,to))path.push(to.clone());return path;
       }
-      closed[current]=1;const x=current%nx,z=Math.floor(current/nx);
-      for(const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]){
-        const xx=x+dx,zz=z+dz;if(xx<0||xx>=nx||zz<0||zz>=nz)continue;const next=zz*nx+xx;
-        if(!cells[next]||closed[next]||Math.abs(heights[next]-heights[current])>this.maxStep+.01)continue;
-        if(dx&&dz&&(!cells[z*nx+xx]||!cells[zz*nx+x]))continue;
-        if(!this.clearWalk(coord(current),coord(next),this.radius+.005))continue;
-        const score=scores[current]+Math.hypot(dx,dz);if(score>=scores[next])continue;
+      closed[current]=1;const x=current%nx,z=Math.floor(current/nx),h=heuristic(current);if(h<bestH){bestH=h;best=current;}
+      const mask=edges[current];
+      for(let d=0;d<8;d++){
+        if(!(mask&(1<<d)))continue;const [dx,dz]=NAV_DIRS[d],next=(z+dz)*nx+x+dx;if(closed[next])continue;
+        const score=scores[current]+(dx&&dz?Math.SQRT2:1);if(score>=scores[next])continue;
         scores[next]=score;parents[next]=current;push(next,score+heuristic(next));
       }
-    }return [];
+    }
+    // Goal is disconnected from the NPC's region: approach the closest reachable node instead of freezing.
+    return best===start?[]:build(best);
   }
   steer(from,to,state,dt){
     state.timer=(state.timer||0)-dt;
