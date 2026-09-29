@@ -1,0 +1,4 @@
+ELDORIA: 2528 architectural/prop pieces, 109 clusters, 130 collision volumes.
+ASHEN CROWN: 3D scene ready; touch controls and NPC combat initialized.
+load ms 1735
+B4 {"stand_easy":{"t":"15.9","hp":0,"mode":"result"},"stand_normal":{"t":"9.9","hp":0,"mode":"result"},"stand_hard":{"t":"5.9","hp":0,"mode":"result"},"spam":{"t":"8.6","php":66,"ehp":0,"hits":7},"stunlock":{"t":"8.6","enemyAttacks":5,"ehp":0,"php":66}}

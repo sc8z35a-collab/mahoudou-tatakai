@@ -1,0 +1,2 @@
+ELDORIA: 2528 architectural/prop pieces, 109 clusters, 130 collision volumes.
+meshes 605 unique materials 20 meshes with env 529

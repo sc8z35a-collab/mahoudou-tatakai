@@ -1,0 +1,1 @@
+floor outside shadow frustum % 8.5 { 'north-west': 408, 'south-west': 300, 'north-east': 860 } throne top in frustum? true [ '-17.4', '-10.4', '-2.5' ]

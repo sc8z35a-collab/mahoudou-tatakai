@@ -1,0 +1,5 @@
+ELDORIA: 2528 architectural/prop pieces, 109 clusters, 130 collision volumes.
+player cut 0 max forward blade z 2.07 at 55% tip@48% [ '-0.23', '3.41', '1.17' ] hitRange 2.85 needed(range-.32) 2.5300000000000002
+player cut 1 max forward blade z 1.94 at 53% tip@48% [ '0.57', '2.24', '1.59' ] hitRange 2.85 needed(range-.32) 2.5300000000000002
+enemy cut 0 max forward blade z 2.22 at 55% tip@48% [ '-0.25', '3.64', '1.26' ] hitRange 2.75 needed(range-.32) 2.43
+enemy cut 1 max forward blade z 2.07 at 53% tip@48% [ '0.61', '2.39', '1.70' ] hitRange 2.75 needed(range-.32) 2.43

@@ -1,0 +1,93 @@
+ELDORIA: 2528 architectural/prop pieces, 109 clusters, 130 collision volumes.
+{
+ "urnInsidePlinth": [
+  [
+   -5.4,
+   -29.4,
+   "0.27"
+  ],
+  [
+   5.4,
+   -29.4,
+   "0.27"
+  ]
+ ],
+ "urnOverhang": [
+  [
+   -5.4,
+   -25,
+   "rim pts off step 7/16"
+  ],
+  [
+   -5.4,
+   -29.4,
+   "rim pts off step 11/16"
+  ],
+  [
+   5.4,
+   -25,
+   "rim pts off step 7/16"
+  ],
+  [
+   5.4,
+   -29.4,
+   "rim pts off step 11/16"
+  ]
+ ],
+ "plinthInStep": [
+  [
+   -5.55,
+   -29,
+   "ground at corners",
+   "0.00/0.81"
+  ],
+  [
+   -5.55,
+   -1,
+   "ground at corners",
+   "0.00/0.00"
+  ],
+  [
+   -5.55,
+   15,
+   "ground at corners",
+   "0.00/0.00"
+  ],
+  [
+   5.55,
+   -29,
+   "ground at corners",
+   "0.81/0.00"
+  ],
+  [
+   5.55,
+   -1,
+   "ground at corners",
+   "0.00/0.00"
+  ],
+  [
+   5.55,
+   15,
+   "ground at corners",
+   "0.00/0.00"
+  ]
+ ],
+ "urnVsRack": [
+  [
+   -11.15,
+   8,
+   "overlaps rack",
+   -10.85,
+   7
+  ]
+ ],
+ "propOverlaps": [
+  "weapon-rack@-10.8,7.0 x ceremonial-urn@-11.2,8.0"
+ ],
+ "propInArch": [
+  "ceremonial-urn@-5.4,-29.4 in guardian-statue-plinth",
+  "ceremonial-urn@-5.4,-29.4 in guardian-statue",
+  "ceremonial-urn@5.4,-29.4 in guardian-statue-plinth",
+  "ceremonial-urn@5.4,-29.4 in guardian-statue"
+ ]
+}
