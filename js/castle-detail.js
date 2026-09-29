@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
+// Shadow frustum extents measured to enclose the whole walkable floor from the in-hall key light.
+const SUN_X=30,SUN_TOP=32,SUN_BOTTOM=32;
 export function buildCastleDetail({scene,renderer,mat,field,sun,coldLight,flame}){
   const group=new THREE.Group();group.name='eldoria-detailed-architecture';scene.add(group);
   let seed=8201;const rnd=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;};
@@ -27,7 +29,7 @@ export function buildCastleDetail({scene,renderer,mat,field,sun,coldLight,flame}
       ctx.fillStyle='#ab946344';for(const [a,b] of [[24,24],[cell-24,24],[24,cell-24],[cell-24,cell-24]]){ctx.beginPath();ctx.moveTo(x*cell+a,y*cell+b-5);ctx.lineTo(x*cell+a+5,y*cell+b);ctx.lineTo(x*cell+a,y*cell+b+5);ctx.lineTo(x*cell+a-5,y*cell+b);ctx.fill();}
     }
   });marble.wrapS=marble.wrapT=THREE.RepeatWrapping;marble.repeat.set(3,6);
-  mat.floor.map=marble;mat.floor.bumpMap=marble;mat.floor.bumpScale=.016;mat.floor.roughness=.43;mat.floor.metalness=.13;mat.floor.needsUpdate=true;
+  const marbleBump=marble.clone();marbleBump.colorSpace=THREE.NoColorSpace;mat.floor.map=marble;mat.floor.bumpMap=marbleBump;mat.floor.bumpScale=.016;mat.floor.roughness=.43;mat.floor.metalness=.13;mat.floor.needsUpdate=true;
   const woodTexture=tex(1024,(ctx,s)=>{
     ctx.fillStyle='#3c251a';ctx.fillRect(0,0,s,s);
     for(let i=0;i<2200;i++){ctx.strokeStyle=i%3?'#9d713418':'#100d0a38';ctx.lineWidth=rnd()*2;ctx.beginPath();const x=rnd()*s;ctx.moveTo(x,0);ctx.bezierCurveTo(x+25,250,x-20,730,x+5,s);ctx.stroke();}
@@ -67,7 +69,7 @@ export function buildCastleDetail({scene,renderer,mat,field,sun,coldLight,flame}
     for(const y of [1.1,3.4,6.5]){box(2.7,.12,.085,blackIron,x,y,17.04);for(let n=-3;n<=3;n++)ball(.028,bronze,x+n*.34,y,16.98);}
     const handle=ring(.16,.03,bronze,x*.21,3.1,16.96);box(.12,.4,.1,blackIron,x*.21,3.1,17.02);
   }
-  for(const x of [-3.65,3.65]){box(.44,8.4,.8,paleStone,x,4.2,17.1);box(.72,.3,.9,mat.trim,x,.16,17.1);box(.8,.28,.95,mat.trim,x,8.3,17.1);}
+  for(const x of [-3.65,3.65]){field.box('door-frame-pillar',x,17.1,.8,.9,0,8.4);box(.44,8.4,.8,paleStone,x,4.2,17.1);box(.72,.3,.9,mat.trim,x,.16,17.1);box(.8,.28,.95,mat.trim,x,8.3,17.1);}
   box(7.9,.5,.9,mat.trim,0,8.6,17.1);
 
   // Wainscoting, raised panels, rosettes, ribs and carved mouldings throughout the hall.
@@ -93,7 +95,7 @@ export function buildCastleDetail({scene,renderer,mat,field,sun,coldLight,flame}
     }
   }
   for(let z=-26;z<=14;z+=8){
-    for(let x=-8;x<=8;x+=2){box(1.84,.12,6.9,mat.trim,x,14.41,z+2.7);box(1.66,.06,6.5,mat.stone,x,14.33,z+2.7);}
+    for(let x=-8;x<=8;x+=2){box(1.84,.12,6.9,mat.trim,x,14.41,z-1);box(1.66,.06,6.5,mat.stone,x,14.33,z-1);}
     const boss=ball(.30,bronze,0,14.3,z);boss.scale.y=.35;
   }
 
@@ -129,7 +131,7 @@ export function buildCastleDetail({scene,renderer,mat,field,sun,coldLight,flame}
   // Many individually modelled props, grouped into believable clusters in the aisles.
   const propGroup=(x,z,angle=0)=>{stats.props++;const g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=angle;group.add(g);return g;};
   function book(x,y,z,p,lying=true){const m=bookMats[Math.floor(rnd()*bookMats.length)],w=.16+rnd()*.09,h=.26+rnd()*.09;
-    const g=new THREE.Group();g.position.set(x,y,z);p.add(g);if(lying)g.rotation.z=Math.PI/2;
+    const g=new THREE.Group();g.position.set(x,y,z);p.add(g);if(lying){g.rotation.x=-Math.PI/2;g.rotation.z=rnd()*Math.PI*2;}
     box(w,h,.065,parchment,0,0,0,g);for(const zz of [-.042,.042])box(w+.025,h+.02,.013,m,0,0,zz,g);
     box(.021,h+.025,.095,m,-w/2,0,0,g);for(const yy of [-h*.3,h*.3])box(.024,.012,.099,bronze,-w/2,yy,0,g);return g;
   }
@@ -140,7 +142,7 @@ export function buildCastleDetail({scene,renderer,mat,field,sun,coldLight,flame}
   function table(x,z,angle){
     const g=propGroup(x,z,angle);box(1.05,.15,2.7,wood,0,1.11,0,g);box(.9,.09,2.48,bronze,0,1.0,0,g);
     for(const xx of [-.38,.38])for(const zz of [-1.08,1.08]){cyl(.075,.11,1,wood,xx,.51,zz,g);box(.14,.08,.14,blackIron,xx,.13,zz,g);}
-    for(let i=0;i<4;i++)book((rnd()-.5)*.55,1.23+i*.012,(rnd()-.5)*1.7,g,true);
+    for(const [bx,bz] of [[-.2,.42],[.22,.5],[-.24,-.62],[.22,-1.2]])book(bx,1.185+.049,bz,g,true);
     goblet(-.25,1.23,.8,g);goblet(.28,1.23,-.72,g);candle(.2,1.2,.17,g);candle(-.27,1.2,-1.05,g);
     const scroll=mesh(new THREE.PlaneGeometry(.5,.6),parchment,0,1.201,-.25,g);scroll.rotation.x=-Math.PI/2;
     for(const zz of [-.55,.05]){const roll=cyl(.028,.028,.52,parchment,0,1.23,zz,g);roll.rotation.z=Math.PI/2;}
@@ -167,15 +169,15 @@ export function buildCastleDetail({scene,renderer,mat,field,sun,coldLight,flame}
   function urn(x,z,y=0){const g=propGroup(x,z);g.position.y=y;cyl(.24,.36,.25,paleStone,0,.125,0,g);cyl(.24,.15,.18,ceramic,0,.34,0,g);const body=ball(.29,ceramic,0,.59,0,g);body.scale.y=1.25;cyl(.17,.23,.16,bronze,0,.94,0,g);ring(.14,.027,bronze,0,.99,0,g).rotation.x=Math.PI/2;
     field.circle('ceremonial-urn',x,z,.37,y,y+1.06);
   }
-  for(const x of [-5.4,5.4]){urn(x,-25,field.ground(x,-25));urn(x,-29.4,field.ground(x,-29.4));}
-  for(const side of [-1,1])for(const z of [-24,-8,8])urn(side*11.15,z);
+  for(const x of [-4.2,4.2]){urn(x,-26.1,field.ground(x,-26.1));urn(x,-28.9,field.ground(x,-28.9));}
+  for(const side of [-1,1])for(const z of [-24,-8,side<0?8.9:8])urn(side*11.15,z);
   function statue(x,z){const g=propGroup(x,z);box(.98,.28,.98,paleStone,0,.14,0,g);box(.77,.78,.77,mat.stone,0,.66,0,g);box(.98,.16,.98,paleStone,0,1.13,0,g);
     for(const xx of [-.16,.16])cyl(.085,.12,.68,paleStone,xx,1.56,0,g);const torso=ball(.27,paleStone,0,2.1,0,g);torso.scale.set(1,1.55,.65);ball(.17,paleStone,0,2.65,0,g);
     for(const xx of [-.29,.29]){const arm=cyl(.09,.075,.60,paleStone,xx,2.13,.03,g);arm.rotation.z=xx>.0?-.22:.22;}
     box(.045,1.30,.055,bronze,0,1.8,.25,g);box(.43,.055,.06,bronze,0,2.17,.25,g);
     field.box('guardian-statue-plinth',x,z,.98,.98,0,1.22);field.circle('guardian-statue',x,z,.43,1.22,2.86);
   }
-  for(const side of [-1,1])for(const z of [-29,-1,15])statue(side*5.55,z);
+  for(const side of [-1,1])for(const z of [-29,-1,15])statue(side*(z<-25?6.2:5.55),z);
 
   // Small surface dressing: candles, bowls, books, coins, pottery and masonry chips.
   for(const side of [-1,1])for(const z of [-27,-19,-11,-3,5,13]){
@@ -186,7 +188,7 @@ export function buildCastleDetail({scene,renderer,mat,field,sun,coldLight,flame}
     if(!field.freeAt(x,z,.16))continue;const chip=mesh(new THREE.DodecahedronGeometry(.025+rnd()*.07,0),mat.trim,x,.04,z);chip.scale.set(1,.5,1.5);chip.rotation.set(rnd(),rnd()*6,rnd());
   }
   for(let i=0;i<45;i++){
-    const x=(rnd()-.5)*9,z=-24.6+rnd()*1.0,y=field.ground(x,z);const g=propGroup(x,z);g.position.y=y;
+    let x=(rnd()-.5)*9;if(Math.abs(x)<1.6)x=Math.sign(x||1)*(1.6+rnd()*.4);const z=-24.6+rnd()*1.0,y=field.ground(x,z);const g=propGroup(x,z);g.position.y=y;
     if(i%3===0)candle(0,0,0,g);else {const coin=cyl(.025,.025,.007,bronze,0,.006,0,g,10);}
   }
   for(const side of [-1,1])for(let i=0;i<6;i++){
@@ -209,7 +211,7 @@ export function buildCastleDetail({scene,renderer,mat,field,sun,coldLight,flame}
   }
   const warm=new THREE.PointLight(0xffc479,16,19,1.6);warm.position.set(0,5,-27);scene.add(warm);
   const entryLight=new THREE.PointLight(0xb0c8d9,14,17,1.7);entryLight.position.set(0,6,14);scene.add(entryLight);
-  sun.intensity=2.8;sun.shadow.mapSize.set(4096,4096);sun.shadow.camera.left=-20;sun.shadow.camera.right=20;sun.shadow.camera.top=32;sun.shadow.camera.bottom=-32;sun.shadow.camera.far=80;sun.shadow.camera.updateProjectionMatrix();
+  sun.intensity=2.8;sun.shadow.mapSize.set(4096,4096);sun.shadow.camera.left=-SUN_X;sun.shadow.camera.right=SUN_X;sun.shadow.camera.top=SUN_TOP;sun.shadow.camera.bottom=-SUN_BOTTOM;sun.shadow.camera.near=-30;sun.shadow.camera.far=80;sun.shadow.camera.updateProjectionMatrix();
   coldLight.intensity=1.05;scene.fog.density=.014;renderer.toneMappingExposure=1.1;
   scene.children.filter(o=>o.isHemisphereLight).forEach(o=>o.intensity=1.15);
   // Merge immutable geometry by material, keeping thousands of details without
