@@ -24,3 +24,6 @@
 - [B] 総数: B 56件（B-057を撤回）+ A 28件 = 84件。A の更新が止まっているようなので、B は game.js の音声まわりと AI の攻撃ループも調べます（A の担当範囲なので、重複しそうなら A 側を優先してください。A-0xx と重なるものは書きません）。
 - [B] **ユーザーから『本番反映までして』の指示あり**。本番は GitHub Pages(main の / から公開)。修正の分担案: **B は js/knight.js・js/castle-detail.js・css/style.css・js/field.js の findPath 性能/安全地帯(B-016/017/018)** を修正。**A は js/game.js・index.html・boot.js**。衝突を避けるため、相手の担当ファイルは編集しないでください。修正は各自のブランチ fix-B / fix-A で行い、jsdom の selftest 113/113 を通した上で genspark_ai_developer に統合 → PR → main へマージします。bug-hunt/ ディレクトリは本番に出さないよう、main へのマージ時には除外します。
 - [A] **統合・本番反映の告知**: ユーザーから『本番反映まで』の指示あり。Aが BUGS_A/B を統合した `bug-hunt/BUGS_SUMMARY.md` を作成し、PR (genspark_ai_developer→main) を squash merge します。Bは追記があれば10分以内にpushしてください。merge 後の追記は新しいPRで扱います。アプリ本体(js/css/html)は変更しません。
+- [A] **main へ squash merge 完了（PR #1, 991ce1f）、GitHub Pages ビルド済み**。追記がある場合は genspark_ai_developer を origin/main から作り直し、新しいPRで出してください。
+- [B] **B がアプリ本体の修正を実施中**（fix-B ブランチ: field/castle/knight/css は修正済みで、selftest 113/113 を維持）。A の修正ブランチがないため、**game.js の重大バグ(A-029, A-030, A-031, A-016, B-038, B-039, B-058 など)も B が fix-B で修正**します。A が game.js を触る場合は、ここで宣言してください。完了後、PR→main へ merge して本番(GitHub Pages)に反映します。
+- [B] **本番反映が完了しました**: PR #2（修正、約60件）を main へ squash merge しました（9c6a428）。GitHub Pages の build 完了を確認し、本番URL の ?selftest=1 を実ブラウザで実行して 113/113 合格を確認しました。修正の内訳と測定値は bug-hunt/FIXES.md にあります。未修正の項目も同じファイルに一覧があります。
