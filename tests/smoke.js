@@ -22,11 +22,11 @@ export function runTests(api) {
   resetClose();
   $('attack-button').dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));
   assert(player.attackTime===0&&player.stamina===83,'Touch attack consumes stamina and begins an attack');
-  updateFighter(player,.31,1);
+  updateFighter(player,.36,1);
   assert(enemy.hp===128,'Attack applies damage inside sword reach');
   updateFighter(player,.1,1.1);
   assert(enemy.hp===128,'One swing cannot apply damage twice');
-  resetClose(); enemy.root.position.z=-10; attack(player); updateFighter(player,.31,1);
+  resetClose(); enemy.root.position.z=-10; attack(player); updateFighter(player,.36,1);
   assert(enemy.hp===150,'Out-of-range swings do not damage the NPC');
   resetClose(); player.guard=true; damage(player,enemy);
   assert(player.hp===100&&player.stamina===80,'Guard blocks damage and consumes stamina');
@@ -39,7 +39,7 @@ export function runTests(api) {
   dodge(player); assert(player.dodgeTime===0,'Exhaustion prevents dodging');
   updateFighter(player,1,1); assert(player.stamina>0,'Stamina regenerates');
   resetClose(); enemy.aiTimer=0; updateAI(.016); assert(enemy.attackTime===0,'NPC initiates its own attack at melee range');
-  updateFighter(enemy,.47,1); assert(player.hp===83,'NPC attack damages the player');
+  updateFighter(enemy,.55,1); assert(player.hp===83,'NPC attack damages the player');
   resetClose(); enemy.aiTimer=0; attack(player); updateAI(.016); assert(enemy.guard,'NPC responds to an incoming attack with guard');
   player.attackTime=.30; updateAI(.10); assert(enemy.guard,'NPC guard persists through the hit window');
   resetClose(); player.root.position.set(100,0,-100); keepInArena(player);
@@ -48,7 +48,7 @@ export function runTests(api) {
   resume(); assert(!api.isPaused()&&!$('pause-dialog').open,'Resume restores the battle');
   $('settings-button').click(); assert(api.isPaused()&&$('settings-dialog').open,'Settings pause active combat');
   $('settings-dialog').querySelector('.close-dialog').click();
-  resetClose(); enemy.hp=1; attack(player); updateFighter(player,.31,1);
+  resetClose(); enemy.hp=1; attack(player); updateFighter(player,.36,1);
   assert(api.getMode()==='result'&&enemy.dead,'Lethal player damage triggers victory');
   resetClose(); player.hp=1; damage(player,enemy);
   assert(api.getMode()==='result'&&player.dead,'Lethal NPC damage triggers defeat');

@@ -17,7 +17,8 @@ try {
   $('loading').innerHTML = '<p>3D描画を開始できませんでした。</p><p>WebGL対応の最新のSafari / Chromeで開いてください。</p>';
   throw error;
 }
-renderer.setPixelRatio(Math.min(devicePixelRatio, 3));
+const coarsePointer=matchMedia('(pointer:coarse)').matches;
+renderer.setPixelRatio(Math.min(devicePixelRatio, coarsePointer?2:3));
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -261,7 +262,7 @@ function updateHUD(){
   $('timer').textContent=formatTime(elapsed);
 }
 function formatTime(t){return `${String(Math.floor(t/60)).padStart(2,'0')}:${String(Math.floor(t%60)).padStart(2,'0')}`;}
-function resetFighter(f){f.hp=f.enemy?150:100;f.stamina=100;f.attackTime=-1;f.attackHit=false;f.cooldown=0;f.guard=false;f.dodgeTime=0;f.dodgeVector.set(0,0,0);f.hurt=0;f.dead=false;f.walk=0;f.moving=0;f.combo=0;f.strafe=1;f.aiTimer=1.5;f.guardTime=0;f.bladeMat.emissive.setHex(0);f.root.rotation.set(0,0,0);f.navigation={timer:0,path:[]};resetKnightMotion(f);}
+function resetFighter(f){f.hp=f.enemy?150:100;f.stamina=100;f.attackTime=-1;f.attackHit=false;f.cooldown=0;f.guard=false;f.dodgeTime=0;f.dodgeVector.set(0,0,0);f.hurt=0;f.dead=false;f.walk=0;f.moving=0;f.combo=0;f.strafe=1;f.aiTimer=1.5;f.guardTime=0;f.staminaDelay=0;f.bladeMat.emissive.setHex(0);f.root.rotation.set(0,0,0);f.navigation={timer:0,path:[]};resetKnightMotion(f);}
 async function requestFullscreen(){try{if(!document.fullscreenElement){await $('game-shell').requestFullscreen?.();await screen.orientation?.lock?.('landscape');}else await document.exitFullscreen();}catch(e){/* iOS and embedded previews may not allow fullscreen / orientation lock. */}}
 function startGame(){
   clearRoundTransient();for(const d of document.querySelectorAll('dialog'))d.close();resetFighter(player);resetFighter(enemy);
@@ -274,7 +275,7 @@ function startGame(){
 function goHome(){clearRoundTransient();for(const d of document.querySelectorAll('dialog'))d.close();mode='title';syncPause();document.body.classList.remove('playing');$('battle-hud').hidden=true;$('touch-controls').hidden=true;$('crosshair').hidden=true;$('combat-message').style.opacity=0;resetFighter(player);resetFighter(enemy);player.root.position.set(2.5,0,2);enemy.root.position.set(0,0,-5);player.root.rotation.y=Math.PI;enemy.root.rotation.y=.1;clearInput();}
 function finish(win){
   if(mode!=='battle')return;
-  mode='result';clearInput();player.attackTime=enemy.attackTime=-1;player.dodgeTime=enemy.dodgeTime=0;
+  mode='result';clearInput();player.attackTime=enemy.attackTime=-1;enemy.guard=false;enemy.guardTime=0;player.guard=false;player.dodgeTime=enemy.dodgeTime=0;
   player.bladeMat.emissive.setHex(0);enemy.bladeMat.emissive.setHex(0);
   $('touch-controls').hidden=true;$('crosshair').hidden=true;updateHUD();
   $('result-eyebrow').textContent=win?'VICTORY':'DEFEATED';$('result-title').textContent=win?'王冠は、あなたの手に。':'まだ、剣は折れていない。';
@@ -289,29 +290,29 @@ function attack(f){
   if(mode!=='battle'||paused||!canAct(f))return;
   if(f.stamina<17){if(!f.enemy)message('スタミナが足りない',.65);return;}
   f.guard=false;f.stamina-=17;f.attackTime=0;f.attackHit=false;f.combo=(f.combo+1)%2;f.attackDuration=f.enemy?(difficulty==='easy'?1.1:difficulty==='hard'?.72:.94):.6;
-  if(f.enemy)f.bladeMat.emissive.setHex(0x8b2515);else sfx('swing');
+  if(f.enemy)f.bladeMat.emissive.setHex(0x8b2515);sfx('swing');
 }
 function dodge(f){
   if(mode!=='battle'||paused||!canAct(f))return;
   if(f.stamina<25){if(!f.enemy)message('スタミナが足りない',.65);return;}
   f.stamina-=25;f.dodgeTime=.43;f.guard=false;
-  const move=movementVector();if(move.lengthSq()<.05)move.copy(player.root.position).sub(enemy.root.position).setY(0).normalize();
+  const other=f.enemy?player:enemy;const move=f.enemy?new THREE.Vector3():movementVector();if(move.lengthSq()<.05)move.copy(f.root.position).sub(other.root.position).setY(0);if(move.lengthSq()<1e-6)move.set(-Math.sin(f.root.rotation.y),0,-Math.cos(f.root.rotation.y));
   f.dodgeVector.copy(move.normalize());sfx('dodge');
 }
 function damage(target,attacker){
   if(mode!=='battle'||paused||target.dead||attacker.dead)return;
   const pos=target.root.position.clone();pos.y+=1.55;
   if(target.dodgeTime>.06){if(!target.enemy)message('回避成功',.6);return;}
-  if(target.guard&&target.stamina>=20&&isFacing(target,attacker,.2)){
-    target.stamina-=20;sparks(pos,0xffdca0,23);sfx('guard');attacker.cooldown=.4;
+  if(target.guard&&target.stamina>=(target.enemy?10:20)&&isFacing(target,attacker,.2)){
+    target.stamina-=target.enemy?10:20;if(!target.enemy)target.staminaDelay=1.2;sparks(pos,0xffdca0,23);sfx('guard');attacker.cooldown=.4;
     if(!target.enemy){message('防御成功',.6);shake=.065;}
     return;
   }
   const amount=attacker.enemy?(difficulty==='easy'?12:difficulty==='hard'?23:17):22;
-  target.hp=Math.max(0,target.hp-amount);target.hurt=.32;target.attackTime=-1;target.bladeMat.emissive.setHex(0);target.cooldown=.34;
+  target.hp=Math.max(0,target.hp-amount);target.hurt=.32;if(target.attackTime<0||target.attackTime/target.attackDuration<.3){target.attackTime=-1;target.bladeMat.emissive.setHex(0);}target.cooldown=Math.max(target.cooldown,.34);
   const push=target.root.position.clone().sub(attacker.root.position).setY(0).normalize().multiplyScalar(.23);moveFighter(target,push);
   sparks(pos,attacker.enemy?0xeb9b73:0xe9dfb7,18);sfx('hit');shake=target.enemy?.075:.16;
-  if(target.enemy){hits++;message('命中  −22',.65);}else{$('damage-flash').style.opacity=.7;clearTimeout(flashTimer);flashTimer=setTimeout(()=>$('damage-flash').style.opacity=0,160);if(navigator.userActivation?.hasBeenActive)navigator.vibrate?.(35);}
+  if(target.enemy){hits++;message(`命中  −${amount}`,.65);}else{$('damage-flash').style.opacity=.7;clearTimeout(flashTimer);flashTimer=setTimeout(()=>$('damage-flash').style.opacity=0,160);if(navigator.userActivation?.hasBeenActive)navigator.vibrate?.(35);}
   keepInArena(target);updateHUD();
   if(target.hp<=0){target.dead=true;target.guard=false;finish(target.enemy);}
 }
@@ -322,9 +323,12 @@ function movementVector(){
   const right=new THREE.Vector3().crossVectors(forward,Y).normalize();
   const v=right.multiplyScalar(x).addScaledVector(forward,-y);if(v.length()>1)v.normalize();return v;
 }
-function face(f,target,dt){const delta=target.root.position.clone().sub(f.root.position);const angle=Math.atan2(delta.x,delta.z);const diff=Math.atan2(Math.sin(angle-f.root.rotation.y),Math.cos(angle-f.root.rotation.y));f.root.rotation.y+=diff*Math.min(1,dt*12);}
+function face(f,target,dt){const delta=target.root.position.clone().sub(f.root.position);const angle=Math.atan2(delta.x,delta.z);const diff=Math.atan2(Math.sin(angle-f.root.rotation.y),Math.cos(angle-f.root.rotation.y));const rate=f.attackTime>=0?(f.attackTime/f.attackDuration<.25?5:1.2):12;f.root.rotation.y+=diff*Math.min(1,dt*rate);}
 function keepInArena(f){field.project(f.root.position);}
-function moveFighter(f,delta){field.move(f.root.position,delta);}
+function moveFighter(f,delta){
+  const other=f===player?enemy:player,p=f.root.position,n=Math.max(1,Math.ceil(Math.hypot(delta.x,delta.z)/.08)),step=delta.clone().divideScalar(n);
+  for(let i=0;i<n;i++){field.move(p,step);if(mode!=='battle'||other.dead)continue;const dx=p.x-other.root.position.x,dz=p.z-other.root.position.z,d=Math.hypot(dx,dz);if(d<.95){const k=d<1e-5?0:(.95-d)/d;p.x+=d<1e-5?.95:dx*k;p.z+=dz*k;field.project(p);}}
+}
 function separateFighters(){
   for(let i=0;i<3;i++){
     const push=player.root.position.clone().sub(enemy.root.position).setY(0);let distance=push.length();
@@ -338,7 +342,7 @@ function isFacing(a,b,cosLimit=-.15){
 }
 function updateFighter(f,dt,time){
   if(paused)return;
-  f.cooldown=Math.max(0,f.cooldown-dt);f.hurt=Math.max(0,f.hurt-dt);f.stamina=clamp(f.stamina+dt*(f.guard?3:f.attackTime>=0?4:19),0,100);
+  f.cooldown=Math.max(0,f.cooldown-dt);f.hurt=Math.max(0,f.hurt-dt);if(f.staminaDelay>0)f.staminaDelay=Math.max(0,f.staminaDelay-dt);else f.stamina=clamp(f.stamina+dt*(f.guard?0:f.attackTime>=0?4:19),0,100);
   if(f.dead){animateKnight(f,dt,time);return;}
   if(f.dodgeTime>0){const travelTime=Math.min(dt,f.dodgeTime);f.dodgeTime=Math.max(0,f.dodgeTime-dt);moveFighter(f,f.dodgeVector.clone().multiplyScalar(travelTime*9));}
   let progress=-1;
@@ -347,25 +351,26 @@ function updateFighter(f,dt,time){
   // Pose the entire rig first, so trails and contact feedback use current transforms.
   animateKnight(f,dt,time,progress);
   if(progress>=0){
-    if(progress>.48&&!f.attackHit){f.attackHit=true;slashEffect(f);if(f.enemy)sfx('swing');const target=f.enemy?player:enemy;if(f.root.position.distanceTo(target.root.position)<(f.enemy?2.75:2.85)&&isFacing(f,target)&&field.lineOfSight(f.root.position.clone().add(new THREE.Vector3(0,1.45,0)),target.root.position.clone().add(new THREE.Vector3(0,1.45,0))))damage(target,f);}
-    if(progress>=1){f.attackTime=-1;f.cooldown=f.enemy?(difficulty==='hard'?.28:.62):.16;f.bladeMat.emissive.setHex(0);}
+    if(progress>.55&&!f.attackHit){f.attackHit=true;slashEffect(f);const target=f.enemy?player:enemy;const reach=Math.hypot(target.root.position.x-f.root.position.x,target.root.position.z-f.root.position.z);if(reach<(f.enemy?2.45:2.35)&&Math.abs(target.root.position.y-f.root.position.y)<1.2&&isFacing(f,target)&&field.lineOfSight(f.root.position.clone().add(new THREE.Vector3(0,1.45,0)),target.root.position.clone().add(new THREE.Vector3(0,1.45,0))))damage(target,f);}
+    if(progress>=1){f.attackTime=-1;f.cooldown=f.enemy?(difficulty==='hard'?.28:.62):.3;f.bladeMat.emissive.setHex(0);}
   }
 }
 function updateAI(dt){
   if(mode!=='battle'||paused||enemy.dead)return;
   const delta=player.root.position.clone().sub(enemy.root.position).setY(0);const dist=delta.length();delta.normalize();enemy.aiTimer-=dt;
-  enemy.guardTime=Math.max(0,(enemy.guardTime||0)-dt);enemy.guard=enemy.guardTime>0;enemy.moving=0;
+  enemy.guardTime=Math.max(0,(enemy.guardTime||0)-dt);if(enemy.stamina<10)enemy.guardTime=0;enemy.guard=enemy.guardTime>0;enemy.moving=0;
+  // The warden reads an incoming swing even while recovering from a hit, so pure button-mashing is answered with a guard.
+  if(player.attackTime>=0&&player.attackTime<.24&&enemy.attackTime<0&&enemy.hurt<.2&&enemy.stamina>30&&difficulty!=='easy'&&(difficulty==='hard'||enemy.aiTimer<1)){enemy.guardTime=.42;enemy.guard=true;enemy.hurt=0;}
   if(enemy.attackTime>=0||enemy.hurt>0){enemy.guard=false;return;}
   const speed=difficulty==='easy'?1.65:difficulty==='hard'?2.8:2.15;
   const visible=field.lineOfSight(enemy.root.position.clone().add(new THREE.Vector3(0,1.45,0)),player.root.position.clone().add(new THREE.Vector3(0,1.45,0)));
-  if(dist>2.35||!visible){
+  if(dist>2.1||!visible){
     if(!enemy.navigation)enemy.navigation={timer:0,path:[]};
     const route=field.steer(enemy.root.position,player.root.position,enemy.navigation,dt);
-    moveFighter(enemy,route.multiplyScalar(dt*speed));enemy.moving=.8;
+    moveFighter(enemy,route.multiplyScalar(dt*speed*(enemy.guard?.55:1)));enemy.moving=route.lengthSq()>0?.8:0;
   }
   else if(enemy.cooldown>.15){const side=new THREE.Vector3(delta.z,0,-delta.x);moveFighter(enemy,side.multiplyScalar(dt*.8*enemy.strafe).addScaledVector(delta,-dt*.38));enemy.moving=.35;}
-  if(player.attackTime>=0&&player.attackTime<.24&&enemy.aiTimer<.2&&enemy.stamina>30&&difficulty!=='easy'){enemy.guardTime=.42;enemy.guard=true;}
-  if(dist<2.65&&visible&&enemy.aiTimer<=0&&enemy.cooldown<=0){
+  if(dist<2.4&&visible&&enemy.aiTimer<=0&&enemy.cooldown<=0){
     if(!enemy.guard){attack(enemy);enemy.aiTimer=difficulty==='easy'?1.6:difficulty==='hard'?.55:1.15;enemy.strafe*=-1;}
   }
 }
@@ -419,10 +424,10 @@ function openDialog(id){if(mode==='result'||contextLost)return;if(mode==='battle
 function closeDialog(dialog){dialog.close();syncPause();}
 for(const dialog of [$('help-dialog'),$('settings-dialog')]){dialog.querySelector('.close-dialog').addEventListener('click',()=>closeDialog(dialog));dialog.addEventListener('close',syncPause);dialog.addEventListener('cancel',e=>{e.preventDefault();closeDialog(dialog);});}
 $('help-button').addEventListener('click',()=>openDialog('help-dialog'));document.querySelector('.close-help').addEventListener('click',()=>closeDialog($('help-dialog')));$('settings-button').addEventListener('click',()=>openDialog('settings-dialog'));$('fullscreen-button').addEventListener('click',requestFullscreen);$('sound-button').addEventListener('click',()=>setSound(!soundEnabled));$('sound-toggle').addEventListener('change',e=>setSound(e.target.checked));$('difficulty-select').addEventListener('change',e=>difficulty=e.target.value);
-$('quality-select').addEventListener('change',e=>{const ratios={ultra:3,high:2,standard:1};renderer.setPixelRatio(Math.min(devicePixelRatio,ratios[e.target.value]));bloom.strength=e.target.value==='standard'?.16:.32;ambientOcclusion.enabled=e.target.value!=='standard';castle.setQuality(e.target.value);document.querySelector('.quality').childNodes[1].textContent=' '+e.target.value.toUpperCase()+' ';resize();});
+$('quality-select').addEventListener('change',e=>{const ratios={ultra:3,high:2,standard:1};renderer.setPixelRatio(Math.min(devicePixelRatio,ratios[e.target.value]));bloom.strength=e.target.value==='standard'?.16:.32;ambientOcclusion.enabled=e.target.value==='ultra';castle.setQuality(e.target.value);document.querySelector('.quality').childNodes[1].textContent=' '+e.target.value.toUpperCase()+' ';resize();});
 document.querySelector('#rotate-hint button').addEventListener('click',()=>$('rotate-hint').style.display='none');
 function resize(){renderDirty=true;camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);composer.setPixelRatio(renderer.getPixelRatio());composer.setSize(innerWidth,innerHeight);}
-window.addEventListener('resize',()=>{clearInput();resize();});resize();
+window.addEventListener('resize',resize);resize();
 canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();contextLost=true;clearInput();syncPause();message('3D描画を復旧中です。戻らない場合はページを再読み込みしてください。',60);});
 canvas.addEventListener('webglcontextrestored',()=>{restoreKnightEnvironment(renderer,[player,enemy]);contextLost=false;renderDirty=true;if(mode==='battle')pause();syncPause();message('3D描画が復旧しました',3);});
 
@@ -453,8 +458,9 @@ function animate(){
     updateCamera(dt,nowTime);
   }
   if(!contextLost&&(!paused||renderDirty||firstFrame)){composer.render();renderDirty=false;}
-  if(firstFrame){firstFrame=false;document.body.dataset.sceneReady='true';$('loading').style.opacity=0;setTimeout(()=>$('loading').remove(),750);console.info('ASHEN CROWN: 3D scene ready; touch controls and NPC combat initialized.');}
+  if(firstFrame){firstFrame=false;document.body.dataset.sceneReady='true';$('loading').style.opacity=0;$('loading').style.pointerEvents='none';setTimeout(()=>$('loading').remove(),750);console.info('ASHEN CROWN: 3D scene ready; touch controls and NPC combat initialized.');}
 }
+if(coarsePointer){$('quality-select').value='high';$('quality-select').dispatchEvent(new Event('change'));}
 animate();
 
 // Optional diagnostic route; never runs during ordinary play.
@@ -474,7 +480,7 @@ if (new URLSearchParams(location.search).has('selftest') || document.body.hasAtt
       animateKnight(player,1/60,1);animateKnight(enemy,1/60,1);
       player.hp=83; enemy.hp=106; player.stamina=73; elapsed=21; hits=2; updateHUD();
       for(let i=0;i<120;i++)updateCamera(1/60,nowTime);
-      paused=true; $('combat-message').style.opacity=0;
+      $('combat-message').style.opacity=0;paused=true;
       requestAnimationFrame(() => {
         // Wait for queued dialog-close events before freezing a diagnostic pose.
         paused=true;
