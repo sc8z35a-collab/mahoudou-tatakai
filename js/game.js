@@ -17,7 +17,8 @@ try {
   $('loading').innerHTML = '<p>3D描画を開始できませんでした。</p><p>WebGL対応の最新のSafari / Chromeで開いてください。</p>';
   throw error;
 }
-renderer.setPixelRatio(Math.min(devicePixelRatio, 3));
+const coarsePointer=matchMedia('(pointer:coarse)').matches;
+renderer.setPixelRatio(Math.min(devicePixelRatio, coarsePointer?2:3));
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -423,10 +424,10 @@ function openDialog(id){if(mode==='result'||contextLost)return;if(mode==='battle
 function closeDialog(dialog){dialog.close();syncPause();}
 for(const dialog of [$('help-dialog'),$('settings-dialog')]){dialog.querySelector('.close-dialog').addEventListener('click',()=>closeDialog(dialog));dialog.addEventListener('close',syncPause);dialog.addEventListener('cancel',e=>{e.preventDefault();closeDialog(dialog);});}
 $('help-button').addEventListener('click',()=>openDialog('help-dialog'));document.querySelector('.close-help').addEventListener('click',()=>closeDialog($('help-dialog')));$('settings-button').addEventListener('click',()=>openDialog('settings-dialog'));$('fullscreen-button').addEventListener('click',requestFullscreen);$('sound-button').addEventListener('click',()=>setSound(!soundEnabled));$('sound-toggle').addEventListener('change',e=>setSound(e.target.checked));$('difficulty-select').addEventListener('change',e=>difficulty=e.target.value);
-$('quality-select').addEventListener('change',e=>{const ratios={ultra:3,high:2,standard:1};renderer.setPixelRatio(Math.min(devicePixelRatio,ratios[e.target.value]));bloom.strength=e.target.value==='standard'?.16:.32;ambientOcclusion.enabled=e.target.value!=='standard';castle.setQuality(e.target.value);document.querySelector('.quality').childNodes[1].textContent=' '+e.target.value.toUpperCase()+' ';resize();});
+$('quality-select').addEventListener('change',e=>{const ratios={ultra:3,high:2,standard:1};renderer.setPixelRatio(Math.min(devicePixelRatio,ratios[e.target.value]));bloom.strength=e.target.value==='standard'?.16:.32;ambientOcclusion.enabled=e.target.value==='ultra';castle.setQuality(e.target.value);document.querySelector('.quality').childNodes[1].textContent=' '+e.target.value.toUpperCase()+' ';resize();});
 document.querySelector('#rotate-hint button').addEventListener('click',()=>$('rotate-hint').style.display='none');
 function resize(){renderDirty=true;camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);composer.setPixelRatio(renderer.getPixelRatio());composer.setSize(innerWidth,innerHeight);}
-window.addEventListener('resize',()=>{clearInput();resize();});resize();
+window.addEventListener('resize',resize);resize();
 canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();contextLost=true;clearInput();syncPause();message('3D描画を復旧中です。戻らない場合はページを再読み込みしてください。',60);});
 canvas.addEventListener('webglcontextrestored',()=>{restoreKnightEnvironment(renderer,[player,enemy]);contextLost=false;renderDirty=true;if(mode==='battle')pause();syncPause();message('3D描画が復旧しました',3);});
 
@@ -457,8 +458,9 @@ function animate(){
     updateCamera(dt,nowTime);
   }
   if(!contextLost&&(!paused||renderDirty||firstFrame)){composer.render();renderDirty=false;}
-  if(firstFrame){firstFrame=false;document.body.dataset.sceneReady='true';$('loading').style.opacity=0;setTimeout(()=>$('loading').remove(),750);console.info('ASHEN CROWN: 3D scene ready; touch controls and NPC combat initialized.');}
+  if(firstFrame){firstFrame=false;document.body.dataset.sceneReady='true';$('loading').style.opacity=0;$('loading').style.pointerEvents='none';setTimeout(()=>$('loading').remove(),750);console.info('ASHEN CROWN: 3D scene ready; touch controls and NPC combat initialized.');}
 }
+if(coarsePointer){$('quality-select').value='high';$('quality-select').dispatchEvent(new Event('change'));}
 animate();
 
 // Optional diagnostic route; never runs during ordinary play.
@@ -478,7 +480,7 @@ if (new URLSearchParams(location.search).has('selftest') || document.body.hasAtt
       animateKnight(player,1/60,1);animateKnight(enemy,1/60,1);
       player.hp=83; enemy.hp=106; player.stamina=73; elapsed=21; hits=2; updateHUD();
       for(let i=0;i<120;i++)updateCamera(1/60,nowTime);
-      paused=true; $('combat-message').style.opacity=0;
+      $('combat-message').style.opacity=0;paused=true;
       requestAnimationFrame(() => {
         // Wait for queued dialog-close events before freezing a diagnostic pose.
         paused=true;
