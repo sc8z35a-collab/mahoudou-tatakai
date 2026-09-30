@@ -13,6 +13,10 @@ body.playing #rotate-hint{display:none!important}body.playing #landing,body.play
 .help-grid p{line-height:1.7}.help-grid p{margin-bottom:0}.help-tip{margin-bottom:15px;padding-top:10px}.setting-row{padding:12px 0}}
 @media(max-height:410px) and (orientation:landscape){#landing{top:19%}
 .location .slash,.location .tiny-diamond{padding:0 6px}
+.brand,.location,.quality{white-space:nowrap}
+.header-actions{gap:2px}
+.icon-button{min-width:40px}
+.location{font-size:7px;letter-spacing:1px}
 .quality span{display:none}.eyebrow{margin-bottom:8px}h1{font-size:40px;margin:8px 0}.intro{margin:11px 0;font-size:8px}.game-tags{display:none}.primary-button{min-height:43px}.title-sub{font-size:8px}#landing-footer{font-size:7px}.text-button{margin-top:0;min-height:36px}
 .intro{display:none}
 #joystick{width:84px;height:84px}
