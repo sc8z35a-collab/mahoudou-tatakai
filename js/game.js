@@ -274,7 +274,7 @@ function startGame(){
 function goHome(){clearRoundTransient();for(const d of document.querySelectorAll('dialog'))d.close();mode='title';syncPause();document.body.classList.remove('playing');$('battle-hud').hidden=true;$('touch-controls').hidden=true;$('crosshair').hidden=true;$('combat-message').style.opacity=0;resetFighter(player);resetFighter(enemy);player.root.position.set(2.5,0,2);enemy.root.position.set(0,0,-5);player.root.rotation.y=Math.PI;enemy.root.rotation.y=.1;clearInput();}
 function finish(win){
   if(mode!=='battle')return;
-  mode='result';clearInput();player.attackTime=enemy.attackTime=-1;player.dodgeTime=enemy.dodgeTime=0;
+  mode='result';clearInput();player.attackTime=enemy.attackTime=-1;enemy.guard=false;enemy.guardTime=0;player.guard=false;player.dodgeTime=enemy.dodgeTime=0;
   player.bladeMat.emissive.setHex(0);enemy.bladeMat.emissive.setHex(0);
   $('touch-controls').hidden=true;$('crosshair').hidden=true;updateHUD();
   $('result-eyebrow').textContent=win?'VICTORY':'DEFEATED';$('result-title').textContent=win?'王冠は、あなたの手に。':'まだ、剣は折れていない。';
@@ -295,7 +295,7 @@ function dodge(f){
   if(mode!=='battle'||paused||!canAct(f))return;
   if(f.stamina<25){if(!f.enemy)message('スタミナが足りない',.65);return;}
   f.stamina-=25;f.dodgeTime=.43;f.guard=false;
-  const move=movementVector();if(move.lengthSq()<.05)move.copy(player.root.position).sub(enemy.root.position).setY(0).normalize();
+  const other=f.enemy?player:enemy;const move=f.enemy?new THREE.Vector3():movementVector();if(move.lengthSq()<.05)move.copy(f.root.position).sub(other.root.position).setY(0);if(move.lengthSq()<1e-6)move.set(-Math.sin(f.root.rotation.y),0,-Math.cos(f.root.rotation.y));
   f.dodgeVector.copy(move.normalize());sfx('dodge');
 }
 function damage(target,attacker){
@@ -308,10 +308,10 @@ function damage(target,attacker){
     return;
   }
   const amount=attacker.enemy?(difficulty==='easy'?12:difficulty==='hard'?23:17):22;
-  target.hp=Math.max(0,target.hp-amount);target.hurt=.32;target.attackTime=-1;target.bladeMat.emissive.setHex(0);target.cooldown=.34;
+  target.hp=Math.max(0,target.hp-amount);target.hurt=.32;if(target.attackTime<0||target.attackTime/target.attackDuration<.3){target.attackTime=-1;target.bladeMat.emissive.setHex(0);}target.cooldown=Math.max(target.cooldown,.34);
   const push=target.root.position.clone().sub(attacker.root.position).setY(0).normalize().multiplyScalar(.23);moveFighter(target,push);
   sparks(pos,attacker.enemy?0xeb9b73:0xe9dfb7,18);sfx('hit');shake=target.enemy?.075:.16;
-  if(target.enemy){hits++;message('命中  −22',.65);}else{$('damage-flash').style.opacity=.7;clearTimeout(flashTimer);flashTimer=setTimeout(()=>$('damage-flash').style.opacity=0,160);if(navigator.userActivation?.hasBeenActive)navigator.vibrate?.(35);}
+  if(target.enemy){hits++;message(`命中  −${amount}`,.65);}else{$('damage-flash').style.opacity=.7;clearTimeout(flashTimer);flashTimer=setTimeout(()=>$('damage-flash').style.opacity=0,160);if(navigator.userActivation?.hasBeenActive)navigator.vibrate?.(35);}
   keepInArena(target);updateHUD();
   if(target.hp<=0){target.dead=true;target.guard=false;finish(target.enemy);}
 }
@@ -322,7 +322,7 @@ function movementVector(){
   const right=new THREE.Vector3().crossVectors(forward,Y).normalize();
   const v=right.multiplyScalar(x).addScaledVector(forward,-y);if(v.length()>1)v.normalize();return v;
 }
-function face(f,target,dt){const delta=target.root.position.clone().sub(f.root.position);const angle=Math.atan2(delta.x,delta.z);const diff=Math.atan2(Math.sin(angle-f.root.rotation.y),Math.cos(angle-f.root.rotation.y));f.root.rotation.y+=diff*Math.min(1,dt*12);}
+function face(f,target,dt){const delta=target.root.position.clone().sub(f.root.position);const angle=Math.atan2(delta.x,delta.z);const diff=Math.atan2(Math.sin(angle-f.root.rotation.y),Math.cos(angle-f.root.rotation.y));const rate=f.attackTime>=0?(f.attackTime/f.attackDuration<.25?5:1.2):12;f.root.rotation.y+=diff*Math.min(1,dt*rate);}
 function keepInArena(f){field.project(f.root.position);}
 function moveFighter(f,delta){field.move(f.root.position,delta);}
 function separateFighters(){
@@ -338,7 +338,7 @@ function isFacing(a,b,cosLimit=-.15){
 }
 function updateFighter(f,dt,time){
   if(paused)return;
-  f.cooldown=Math.max(0,f.cooldown-dt);f.hurt=Math.max(0,f.hurt-dt);f.stamina=clamp(f.stamina+dt*(f.guard?3:f.attackTime>=0?4:19),0,100);
+  f.cooldown=Math.max(0,f.cooldown-dt);f.hurt=Math.max(0,f.hurt-dt);f.stamina=clamp(f.stamina+dt*(f.guard?0:f.attackTime>=0?4:19),0,100);
   if(f.dead){animateKnight(f,dt,time);return;}
   if(f.dodgeTime>0){const travelTime=Math.min(dt,f.dodgeTime);f.dodgeTime=Math.max(0,f.dodgeTime-dt);moveFighter(f,f.dodgeVector.clone().multiplyScalar(travelTime*9));}
   let progress=-1;
@@ -348,20 +348,20 @@ function updateFighter(f,dt,time){
   animateKnight(f,dt,time,progress);
   if(progress>=0){
     if(progress>.48&&!f.attackHit){f.attackHit=true;slashEffect(f);if(f.enemy)sfx('swing');const target=f.enemy?player:enemy;if(f.root.position.distanceTo(target.root.position)<(f.enemy?2.75:2.85)&&isFacing(f,target)&&field.lineOfSight(f.root.position.clone().add(new THREE.Vector3(0,1.45,0)),target.root.position.clone().add(new THREE.Vector3(0,1.45,0))))damage(target,f);}
-    if(progress>=1){f.attackTime=-1;f.cooldown=f.enemy?(difficulty==='hard'?.28:.62):.16;f.bladeMat.emissive.setHex(0);}
+    if(progress>=1){f.attackTime=-1;f.cooldown=f.enemy?(difficulty==='hard'?.28:.62):.3;f.bladeMat.emissive.setHex(0);}
   }
 }
 function updateAI(dt){
   if(mode!=='battle'||paused||enemy.dead)return;
   const delta=player.root.position.clone().sub(enemy.root.position).setY(0);const dist=delta.length();delta.normalize();enemy.aiTimer-=dt;
-  enemy.guardTime=Math.max(0,(enemy.guardTime||0)-dt);enemy.guard=enemy.guardTime>0;enemy.moving=0;
+  enemy.guardTime=Math.max(0,(enemy.guardTime||0)-dt);if(enemy.stamina<20)enemy.guardTime=0;enemy.guard=enemy.guardTime>0;enemy.moving=0;
   if(enemy.attackTime>=0||enemy.hurt>0){enemy.guard=false;return;}
   const speed=difficulty==='easy'?1.65:difficulty==='hard'?2.8:2.15;
   const visible=field.lineOfSight(enemy.root.position.clone().add(new THREE.Vector3(0,1.45,0)),player.root.position.clone().add(new THREE.Vector3(0,1.45,0)));
   if(dist>2.35||!visible){
     if(!enemy.navigation)enemy.navigation={timer:0,path:[]};
     const route=field.steer(enemy.root.position,player.root.position,enemy.navigation,dt);
-    moveFighter(enemy,route.multiplyScalar(dt*speed));enemy.moving=.8;
+    moveFighter(enemy,route.multiplyScalar(dt*speed*(enemy.guard?.55:1)));enemy.moving=route.lengthSq()>0?.8:0;
   }
   else if(enemy.cooldown>.15){const side=new THREE.Vector3(delta.z,0,-delta.x);moveFighter(enemy,side.multiplyScalar(dt*.8*enemy.strafe).addScaledVector(delta,-dt*.38));enemy.moving=.35;}
   if(player.attackTime>=0&&player.attackTime<.24&&enemy.aiTimer<.2&&enemy.stamina>30&&difficulty!=='easy'){enemy.guardTime=.42;enemy.guard=true;}
