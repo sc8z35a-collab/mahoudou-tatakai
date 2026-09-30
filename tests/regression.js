@@ -15,7 +15,7 @@ export function runRegression(api, assert) {
   assert(player.hp===100&&player.stamina===0,'Exactly 20 stamina permits one complete block');
   closeRange();player.root.rotation.y=0;player.guard=true;damage(player,enemy);
   assert(player.hp===83,'A shield does not block an attack from behind');
-  closeRange();player.root.rotation.y=0;attack(player);updateFighter(player,.31,1);
+  closeRange();player.root.rotation.y=0;attack(player);updateFighter(player,.36,1);
   assert(enemy.hp===150,'Sword cannot hit a target behind the attacker');
   closeRange();player.stamina=99;updateFighter(player,5,1);
   assert(player.stamina===100,'Regeneration is capped at maximum stamina');

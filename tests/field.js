@@ -34,7 +34,7 @@ export function runFieldTests(api,assert){
   let grounded=true;for(const leg of player.legs)for(const x of [-.095,.095])for(const z of [-.105,.265])if(p(x,-.11,z).applyMatrix4(leg.ankle.matrixWorld).y<1.62)grounded=false;
   assert(grounded,'Knight feet use platform height');
   startGame();player.root.position.set(8.15,0,-10);enemy.root.position.set(10.65,0,-10);player.root.rotation.y=Math.PI/2;
-  attack(player);updateFighter(player,.31,1);assert(enemy.hp===150,'Sword cannot hit through column');
+  attack(player);updateFighter(player,.36,1);assert(enemy.hp===150,'Sword cannot hit through column');
   const walker=from.clone();let reached=true;for(const point of path){
     for(let n=0;n<100&&Math.hypot(point.x-walker.x,point.z-walker.z)>.08;n++)field.move(walker,point.clone().sub(walker).setY(0).normalize().multiplyScalar(.075));
     if(!field.freeAt(walker.x,walker.z,field.radius-.002))reached=false;

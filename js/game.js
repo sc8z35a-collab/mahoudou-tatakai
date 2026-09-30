@@ -289,7 +289,7 @@ function attack(f){
   if(mode!=='battle'||paused||!canAct(f))return;
   if(f.stamina<17){if(!f.enemy)message('スタミナが足りない',.65);return;}
   f.guard=false;f.stamina-=17;f.attackTime=0;f.attackHit=false;f.combo=(f.combo+1)%2;f.attackDuration=f.enemy?(difficulty==='easy'?1.1:difficulty==='hard'?.72:.94):.6;
-  if(f.enemy)f.bladeMat.emissive.setHex(0x8b2515);else sfx('swing');
+  if(f.enemy)f.bladeMat.emissive.setHex(0x8b2515);sfx('swing');
 }
 function dodge(f){
   if(mode!=='battle'||paused||!canAct(f))return;
@@ -324,7 +324,10 @@ function movementVector(){
 }
 function face(f,target,dt){const delta=target.root.position.clone().sub(f.root.position);const angle=Math.atan2(delta.x,delta.z);const diff=Math.atan2(Math.sin(angle-f.root.rotation.y),Math.cos(angle-f.root.rotation.y));const rate=f.attackTime>=0?(f.attackTime/f.attackDuration<.25?5:1.2):12;f.root.rotation.y+=diff*Math.min(1,dt*rate);}
 function keepInArena(f){field.project(f.root.position);}
-function moveFighter(f,delta){field.move(f.root.position,delta);}
+function moveFighter(f,delta){
+  const other=f===player?enemy:player,p=f.root.position,n=Math.max(1,Math.ceil(Math.hypot(delta.x,delta.z)/.08)),step=delta.clone().divideScalar(n);
+  for(let i=0;i<n;i++){field.move(p,step);if(mode!=='battle'||other.dead)continue;const dx=p.x-other.root.position.x,dz=p.z-other.root.position.z,d=Math.hypot(dx,dz);if(d<.95){const k=d<1e-5?0:(.95-d)/d;p.x+=d<1e-5?.95:dx*k;p.z+=dz*k;field.project(p);}}
+}
 function separateFighters(){
   for(let i=0;i<3;i++){
     const push=player.root.position.clone().sub(enemy.root.position).setY(0);let distance=push.length();
@@ -347,7 +350,7 @@ function updateFighter(f,dt,time){
   // Pose the entire rig first, so trails and contact feedback use current transforms.
   animateKnight(f,dt,time,progress);
   if(progress>=0){
-    if(progress>.48&&!f.attackHit){f.attackHit=true;slashEffect(f);if(f.enemy)sfx('swing');const target=f.enemy?player:enemy;if(f.root.position.distanceTo(target.root.position)<(f.enemy?2.75:2.85)&&isFacing(f,target)&&field.lineOfSight(f.root.position.clone().add(new THREE.Vector3(0,1.45,0)),target.root.position.clone().add(new THREE.Vector3(0,1.45,0))))damage(target,f);}
+    if(progress>.55&&!f.attackHit){f.attackHit=true;slashEffect(f);const target=f.enemy?player:enemy;const reach=Math.hypot(target.root.position.x-f.root.position.x,target.root.position.z-f.root.position.z);if(reach<(f.enemy?2.45:2.35)&&Math.abs(target.root.position.y-f.root.position.y)<1.2&&isFacing(f,target)&&field.lineOfSight(f.root.position.clone().add(new THREE.Vector3(0,1.45,0)),target.root.position.clone().add(new THREE.Vector3(0,1.45,0))))damage(target,f);}
     if(progress>=1){f.attackTime=-1;f.cooldown=f.enemy?(difficulty==='hard'?.28:.62):.3;f.bladeMat.emissive.setHex(0);}
   }
 }
@@ -360,13 +363,13 @@ function updateAI(dt){
   if(enemy.attackTime>=0||enemy.hurt>0){enemy.guard=false;return;}
   const speed=difficulty==='easy'?1.65:difficulty==='hard'?2.8:2.15;
   const visible=field.lineOfSight(enemy.root.position.clone().add(new THREE.Vector3(0,1.45,0)),player.root.position.clone().add(new THREE.Vector3(0,1.45,0)));
-  if(dist>2.35||!visible){
+  if(dist>2.1||!visible){
     if(!enemy.navigation)enemy.navigation={timer:0,path:[]};
     const route=field.steer(enemy.root.position,player.root.position,enemy.navigation,dt);
     moveFighter(enemy,route.multiplyScalar(dt*speed*(enemy.guard?.55:1)));enemy.moving=route.lengthSq()>0?.8:0;
   }
   else if(enemy.cooldown>.15){const side=new THREE.Vector3(delta.z,0,-delta.x);moveFighter(enemy,side.multiplyScalar(dt*.8*enemy.strafe).addScaledVector(delta,-dt*.38));enemy.moving=.35;}
-  if(dist<2.65&&visible&&enemy.aiTimer<=0&&enemy.cooldown<=0){
+  if(dist<2.4&&visible&&enemy.aiTimer<=0&&enemy.cooldown<=0){
     if(!enemy.guard){attack(enemy);enemy.aiTimer=difficulty==='easy'?1.6:difficulty==='hard'?.55:1.15;enemy.strafe*=-1;}
   }
 }
