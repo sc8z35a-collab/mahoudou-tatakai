@@ -261,7 +261,7 @@ function updateHUD(){
   $('timer').textContent=formatTime(elapsed);
 }
 function formatTime(t){return `${String(Math.floor(t/60)).padStart(2,'0')}:${String(Math.floor(t%60)).padStart(2,'0')}`;}
-function resetFighter(f){f.hp=f.enemy?150:100;f.stamina=100;f.attackTime=-1;f.attackHit=false;f.cooldown=0;f.guard=false;f.dodgeTime=0;f.dodgeVector.set(0,0,0);f.hurt=0;f.dead=false;f.walk=0;f.moving=0;f.combo=0;f.strafe=1;f.aiTimer=1.5;f.guardTime=0;f.bladeMat.emissive.setHex(0);f.root.rotation.set(0,0,0);f.navigation={timer:0,path:[]};resetKnightMotion(f);}
+function resetFighter(f){f.hp=f.enemy?150:100;f.stamina=100;f.attackTime=-1;f.attackHit=false;f.cooldown=0;f.guard=false;f.dodgeTime=0;f.dodgeVector.set(0,0,0);f.hurt=0;f.dead=false;f.walk=0;f.moving=0;f.combo=0;f.strafe=1;f.aiTimer=1.5;f.guardTime=0;f.staminaDelay=0;f.bladeMat.emissive.setHex(0);f.root.rotation.set(0,0,0);f.navigation={timer:0,path:[]};resetKnightMotion(f);}
 async function requestFullscreen(){try{if(!document.fullscreenElement){await $('game-shell').requestFullscreen?.();await screen.orientation?.lock?.('landscape');}else await document.exitFullscreen();}catch(e){/* iOS and embedded previews may not allow fullscreen / orientation lock. */}}
 function startGame(){
   clearRoundTransient();for(const d of document.querySelectorAll('dialog'))d.close();resetFighter(player);resetFighter(enemy);
@@ -302,8 +302,8 @@ function damage(target,attacker){
   if(mode!=='battle'||paused||target.dead||attacker.dead)return;
   const pos=target.root.position.clone();pos.y+=1.55;
   if(target.dodgeTime>.06){if(!target.enemy)message('回避成功',.6);return;}
-  if(target.guard&&target.stamina>=20&&isFacing(target,attacker,.2)){
-    target.stamina-=20;sparks(pos,0xffdca0,23);sfx('guard');attacker.cooldown=.4;
+  if(target.guard&&target.stamina>=(target.enemy?10:20)&&isFacing(target,attacker,.2)){
+    target.stamina-=target.enemy?10:20;if(!target.enemy)target.staminaDelay=1.2;sparks(pos,0xffdca0,23);sfx('guard');attacker.cooldown=.4;
     if(!target.enemy){message('防御成功',.6);shake=.065;}
     return;
   }
@@ -338,7 +338,7 @@ function isFacing(a,b,cosLimit=-.15){
 }
 function updateFighter(f,dt,time){
   if(paused)return;
-  f.cooldown=Math.max(0,f.cooldown-dt);f.hurt=Math.max(0,f.hurt-dt);f.stamina=clamp(f.stamina+dt*(f.guard?0:f.attackTime>=0?4:19),0,100);
+  f.cooldown=Math.max(0,f.cooldown-dt);f.hurt=Math.max(0,f.hurt-dt);if(f.staminaDelay>0)f.staminaDelay=Math.max(0,f.staminaDelay-dt);else f.stamina=clamp(f.stamina+dt*(f.guard?0:f.attackTime>=0?4:19),0,100);
   if(f.dead){animateKnight(f,dt,time);return;}
   if(f.dodgeTime>0){const travelTime=Math.min(dt,f.dodgeTime);f.dodgeTime=Math.max(0,f.dodgeTime-dt);moveFighter(f,f.dodgeVector.clone().multiplyScalar(travelTime*9));}
   let progress=-1;
@@ -354,7 +354,9 @@ function updateFighter(f,dt,time){
 function updateAI(dt){
   if(mode!=='battle'||paused||enemy.dead)return;
   const delta=player.root.position.clone().sub(enemy.root.position).setY(0);const dist=delta.length();delta.normalize();enemy.aiTimer-=dt;
-  enemy.guardTime=Math.max(0,(enemy.guardTime||0)-dt);if(enemy.stamina<20)enemy.guardTime=0;enemy.guard=enemy.guardTime>0;enemy.moving=0;
+  enemy.guardTime=Math.max(0,(enemy.guardTime||0)-dt);if(enemy.stamina<10)enemy.guardTime=0;enemy.guard=enemy.guardTime>0;enemy.moving=0;
+  // The warden reads an incoming swing even while recovering from a hit, so pure button-mashing is answered with a guard.
+  if(player.attackTime>=0&&player.attackTime<.24&&enemy.attackTime<0&&enemy.hurt<.2&&enemy.stamina>30&&difficulty!=='easy'&&(difficulty==='hard'||enemy.aiTimer<1)){enemy.guardTime=.42;enemy.guard=true;enemy.hurt=0;}
   if(enemy.attackTime>=0||enemy.hurt>0){enemy.guard=false;return;}
   const speed=difficulty==='easy'?1.65:difficulty==='hard'?2.8:2.15;
   const visible=field.lineOfSight(enemy.root.position.clone().add(new THREE.Vector3(0,1.45,0)),player.root.position.clone().add(new THREE.Vector3(0,1.45,0)));
@@ -364,7 +366,6 @@ function updateAI(dt){
     moveFighter(enemy,route.multiplyScalar(dt*speed*(enemy.guard?.55:1)));enemy.moving=route.lengthSq()>0?.8:0;
   }
   else if(enemy.cooldown>.15){const side=new THREE.Vector3(delta.z,0,-delta.x);moveFighter(enemy,side.multiplyScalar(dt*.8*enemy.strafe).addScaledVector(delta,-dt*.38));enemy.moving=.35;}
-  if(player.attackTime>=0&&player.attackTime<.24&&enemy.aiTimer<.2&&enemy.stamina>30&&difficulty!=='easy'){enemy.guardTime=.42;enemy.guard=true;}
   if(dist<2.65&&visible&&enemy.aiTimer<=0&&enemy.cooldown<=0){
     if(!enemy.guard){attack(enemy);enemy.aiTimer=difficulty==='easy'?1.6:difficulty==='hard'?.55:1.15;enemy.strafe*=-1;}
   }
