@@ -49,7 +49,8 @@ function materialMaps(renderer) {
   });weave.repeat.set(3,5);
   const pmrem=new THREE.PMREMGenerator(renderer);const room=new RoomEnvironment();
   const envTarget=pmrem.fromScene(room,.03);room.dispose();pmrem.dispose();
-  shared={scratches,rough,mail,weave,env:envTarget.texture,envTarget};return shared;
+  const mailBump=mail.clone();mailBump.colorSpace=THREE.NoColorSpace;
+  shared={scratches,rough,mail,mailBump,weave,env:envTarget.texture,envTarget};return shared;
 }
 
 export function restoreKnightEnvironment(renderer,fighters){
@@ -68,7 +69,7 @@ export function createKnight(scene, renderer, enemy=false) {
   const gold=new THREE.MeshStandardMaterial({color:enemy?0xd1ab58:0xa89057,metalness:.88,roughness:.32,envMap:maps.env,envMapIntensity:.65});
   const darkSteel=new THREE.MeshStandardMaterial({color:0x283540,map:maps.scratches,metalness:.8,roughness:.5,envMap:maps.env,envMapIntensity:.45});
   const leather=new THREE.MeshStandardMaterial({color:0x271c16,bumpMap:maps.weave,bumpScale:.008,roughness:.82});
-  const chain=new THREE.MeshStandardMaterial({color:0x7b8a94,map:maps.mail,bumpMap:maps.mail,bumpScale:.012,metalness:.78,roughness:.6,envMap:maps.env,envMapIntensity:.4});
+  const chain=new THREE.MeshStandardMaterial({color:0x7b8a94,map:maps.mail,bumpMap:maps.mailBump,bumpScale:.012,metalness:.78,roughness:.6,envMap:maps.env,envMapIntensity:.4});
   const cloth=new THREE.MeshStandardMaterial({color:enemy?0x4e101b:0x173640,bumpMap:maps.weave,bumpScale:.008,roughness:.95,side:THREE.DoubleSide});
   const black=new THREE.MeshStandardMaterial({color:0x080f15,roughness:.95});
   function mesh(g,m,x=0,y=0,z=0,p=root){const a=new THREE.Mesh(g,m);a.position.set(x,y,z);a.castShadow=true;a.receiveShadow=true;p.add(a);return a;}
@@ -235,7 +236,7 @@ export function createKnight(scene, renderer, enemy=false) {
   for(const y of [-.13,.15])round(.34,.045,.04,leather,0,y,-.035,shield,.01);
   // Diagonal leather baldric and worn scabbard at the opposite hip.
   const baldric=round(.071,.75,.035,leather,.07,.37,-.211,torso,.009);baldric.rotation.z=-.61;
-  const scabbard=new THREE.Group();scabbard.position.set(.3,1.32,-.11);scabbard.rotation.set(.2,0,-.22);body.add(scabbard);
+  const scabbard=new THREE.Group();scabbard.position.set(.3,1.32,-.11);scabbard.rotation.set(.2,0,-.22);body.add(scabbard);scabbard.name='scabbard';
   round(.10,1.05,.065,leather,0,-.54,0,scabbard,.025);round(.105,.08,.071,gold,0,-.06,0,scabbard,.015);round(.082,.10,.065,edge,0,-1.055,0,scabbard,.02);
   // The split cape exposes the silhouette instead of hiding it behind a flat rectangle.
   const capeGeo=new THREE.PlaneGeometry(.74,1.39,24,36);
@@ -249,12 +250,12 @@ export function createKnight(scene, renderer, enemy=false) {
   capeGeo.computeVertexNormals();const cape=mesh(capeGeo,cloth,0,-.14,-.225,torso);cape.name='weighted-split-cape';
   const capeBase=Float32Array.from(attr.array);
   for(const s of [-1,1]){ball(.055,.047,.017,gold,s*.23,.53,-.205,torso);line([[s*.23,.53,-.224],[s*.16,.48,-.24],[0,.45,-.245]],.008,edge,torso);}
-  const shadow=mesh(new THREE.CircleGeometry(.49,48),new THREE.MeshBasicMaterial({color:0x080e12,transparent:true,opacity:.18,depthWrite:false}),0,.016,0,root);shadow.rotation.x=-Math.PI/2;
+  const shadow=mesh(new THREE.CircleGeometry(.49,48),new THREE.MeshBasicMaterial({color:0x080e12,transparent:true,opacity:.18,depthWrite:false}),0,.016,0,root);shadow.rotation.x=-Math.PI/2;shadow.castShadow=false;shadow.receiveShadow=false;
   root.scale.setScalar(enemy?1.07:1);
   const trailGeo=new THREE.BufferGeometry();trailGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(18*6*3),3));trailGeo.setAttribute('color',new THREE.BufferAttribute(new Float32Array(18*6*3),3));
-  const trailMat=new THREE.LineBasicMaterial({color:enemy?0xe6a17b:0xd0e9f3,vertexColors:true,transparent:true,opacity:.5,depthWrite:false,blending:THREE.AdditiveBlending});
+  const trailMat=new THREE.LineBasicMaterial({color:enemy?0xe6a17b:0xd0e9f3,vertexColors:true,transparent:true,opacity:enemy?.19:.23,depthWrite:false,blending:THREE.AdditiveBlending});
   const trail=new THREE.Line(trailGeo,trailMat);trail.frustumCulled=false;trail.visible=false;scene.add(trail);
-  return {root,body,torso,pelvis,head,legs,arms,sword,shield,bladeMat,tip,bladeBase,grip,cape,capeBase,trail,trailHistory:[],enemy,hp:enemy?150:100,stamina:100,attackTime:-1,attackDuration:.68,attackHit:false,cooldown:0,guard:false,dodgeTime:0,dodgeVector:new THREE.Vector3(),hurt:0,walk:0,moving:0,combo:0,dead:false,aiTimer:1.2,strafe:1,guardTime:0,motion:{speed:0,forward:0,side:0,lastPosition:root.position.clone(),guard:0,recoil:0,death:0,initialized:false}};
+  return {root,body,torso,pelvis,head,legs,arms,sword,shield,scabbard,bladeMat,tip,bladeBase,grip,cape,capeBase,trail,trailHistory:[],enemy,hp:enemy?150:100,stamina:100,attackTime:-1,attackDuration:.68,attackHit:false,cooldown:0,guard:false,dodgeTime:0,dodgeVector:new THREE.Vector3(),hurt:0,walk:0,moving:0,combo:0,dead:false,aiTimer:1.2,strafe:1,guardTime:0,motion:{speed:0,forward:0,side:0,lastPosition:root.position.clone(),guard:0,recoil:0,death:0,initialized:false}};
 }
 
 // Poses are expressed in the skeleton's local axes. Each attack has anticipation,
@@ -286,14 +287,14 @@ function samplePose(progress,combo){
 export function resetKnightMotion(f){
   Object.assign(f.motion,{speed:0,forward:0,side:0,guard:0,recoil:0,death:0,initialized:false});
   f.motion.lastPosition.copy(f.root.position);f.trailHistory.length=0;f.trail.visible=false;
-  f.body.position.set(0,0,0);f.body.rotation.set(0,0,0);f.torso.position.set(0,1.5,0);f.torso.rotation.set(0,0,0);f.pelvis.rotation.set(0,0,0);
+  f.body.position.set(0,0,0);f.body.rotation.set(0,0,0);f.scabbard.rotation.set(.2,0,-.22);f.torso.position.set(0,1.5,0);f.torso.rotation.set(0,0,0);f.pelvis.rotation.set(0,0,0);
 }
 export function animateKnight(f,dt,time,progress=-1){
   const m=f.motion;
   const delta=f.root.position.clone().sub(m.lastPosition);m.lastPosition.copy(f.root.position);
   delta.setY(0).applyAxisAngle(UP,-f.root.rotation.y);
   const actualSpeed=m.initialized?Math.min(1,delta.length()/Math.max(.001,dt)/3.5):0;m.initialized=true;
-  m.speed=THREE.MathUtils.damp(m.speed,f.moving>.01?Math.max(actualSpeed,f.moving*.45):0,12,dt);
+  m.speed=THREE.MathUtils.damp(m.speed,f.moving>.01?(m.initialized?actualSpeed:f.moving*.45):0,12,dt);
   if(delta.lengthSq()>.000001){m.forward=THREE.MathUtils.damp(m.forward,delta.z/(delta.length()||1),12,dt);m.side=THREE.MathUtils.damp(m.side,delta.x/(delta.length()||1),12,dt);}
   m.guard=THREE.MathUtils.damp(m.guard,f.guard?1:0,16,dt);
   m.recoil=THREE.MathUtils.damp(m.recoil,f.hurt>0?1:0,f.hurt>0?28:9,dt);
@@ -328,13 +329,13 @@ export function animateKnight(f,dt,time,progress=-1){
   for(let i=0;i<cape.count;i++){
     const x=f.capeBase[i*3],y=f.capeBase[i*3+1],lower=THREE.MathUtils.clamp((.695-y)/1.39,0,1);
     cape.setXYZ(i,x+Math.sin(time*3-y*4)*.017*lower*m.speed,y,
-      f.capeBase[i*3+2]-Math.pow(lower,1.7)*(.06+m.speed*.24+dodge*.19)+Math.sin(time*3.5-y*5+x*12)*.035*lower+Math.sin(x*27)*.018*lower-p.tw*lower*x*.18);
+      f.capeBase[i*3+2]-Math.pow(lower,1.7)*(.06+m.speed*.24+dodge*.19)*(1-smooth(m.death))+Math.pow(lower,1.2)*.09*smooth(m.death)+Math.sin(time*3.5-y*5+x*12)*.035*lower+Math.sin(x*27)*.018*lower-p.tw*lower*x*.18);
   }
   cape.needsUpdate=true;f.cape.geometry.computeVertexNormals();
   if(f.dead){
     m.death=Math.min(1,m.death+dt*.85);const fall=smooth(m.death);
     f.body.rotation.x=-fall*1.44;f.body.position.y=fall*.19;
-    f.torso.rotation.x=-.08;right.shoulder.rotation.z+=fall*.6;left.shoulder.rotation.z-=fall*.45;
+    f.torso.rotation.x=-.08;right.shoulder.rotation.z+=fall*.6;left.shoulder.rotation.z-=fall*.45;f.scabbard.rotation.x=.2-fall*.55;
   }
   // Trail endpoints are sampled from the actual blade, not a generic ring at the waist.
   f.root.updateMatrixWorld(true);
@@ -344,8 +345,8 @@ export function animateKnight(f,dt,time,progress=-1){
     for(const leg of f.legs)for(const x of [-.095,.095])for(const z of [-.105,.265]){
       soleY=Math.min(soleY,new THREE.Vector3(x,-.11,z).applyMatrix4(leg.ankle.matrixWorld).y);
     }
-    const floorY=f.root.position.y+.006;
-    if(soleY<floorY){f.body.position.y+=(floorY-soleY)/f.root.scale.y;f.root.updateMatrixWorld(true);}
+    const floorY=f.root.position.y+.001;
+    if(Math.abs(soleY-floorY)>.0005){f.body.position.y+=(floorY-soleY)/f.root.scale.y;f.root.updateMatrixWorld(true);}
   }
   for(const sample of f.trailHistory)sample.age+=dt;
   f.trailHistory=f.trailHistory.filter(sample=>sample.age<.065);
